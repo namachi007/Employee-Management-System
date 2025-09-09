@@ -15,4 +15,3 @@ A modern, full-stack CRUD application for managing employees with a user-friendl
 
 **Backend:** Node.js, Express.js, MySQL, CORS
 **Frontend:** React 19, Tailwind CSS, React Icons, Axios
-# Employee-Management-System
