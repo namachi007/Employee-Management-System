@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2/promise');
-
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -23,7 +23,7 @@ const db = mysql.createPool({
 db.getConnection()
   .then(connection => {
     console.log('Connected to MySQL database');
-    connection.release(); // release the connection back to the pool
+    connection.release();
   })
   .catch(err => {
     console.error('Error connecting to MySQL:', err);
@@ -63,20 +63,30 @@ app.get('/api/employees/:id', async (req, res) => {
 
 app.post('/api/employees', async (req, res) => {
   try {
-        const { name, email, position, department } = req.body;
+        const { name, email, position, department, imageUrl } = req.body;
+        console.log('POST /api/employees - Request body:', { name, email, position, department, imageUrl });
+        
         if (!name || !email) {
             return res.status(400).json({ error: 'Name and email are required' });
         }
 
-        const query = 'INSERT INTO employees (name, email, position, department) VALUES (?, ?, ?, ?)';
-        const [results] = await db.query(query, [name, email, position, department]);
+        
+        const cleanPosition = position && position.trim() !== '' ? position : null;
+        const cleanDepartment = department && department.trim() !== '' ? department : null;
+        const cleanImageUrl = imageUrl && imageUrl.trim() !== '' ? imageUrl : null;
+        
+        console.log('Cleaned data:', { cleanPosition, cleanDepartment, cleanImageUrl });
+
+        const query = 'INSERT INTO employees (name, email, position, department, imageUrl) VALUES (?, ?, ?, ?, ?)';
+        const [results] = await db.query(query, [name, email, cleanPosition, cleanDepartment, cleanImageUrl]);
 
         res.status(201).json({
             id: results.insertId,
             name,
             email,
-            position,
-            department,
+            position: cleanPosition,
+            department: cleanDepartment,
+            imageUrl: cleanImageUrl,
             message: 'Employee created successfully'
         });
     } catch (err) {
@@ -92,18 +102,32 @@ app.post('/api/employees', async (req, res) => {
 app.put('/api/employees/:id', async (req, res) => {
   try {
         const { id } = req.params;
-        const { name, email, position, department } = req.body;
+        const { name, email, position, department, imageUrl } = req.body;
+        console.log(`PUT /api/employees/${id} - Request body:`, { name, email, position, department, imageUrl });
         if (!name || !email) {
             return res.status(400).json({ error: 'Name and email are required' });
         }
 
-        const query = 'UPDATE employees SET name = ?, email = ?, position = ?, department = ? WHERE id = ?';
-        const [results] = await db.query(query, [name, email, position, department, id]);
+        
+        const cleanPosition = position && position.trim() !== '' ? position : null;
+        const cleanDepartment = department && department.trim() !== '' ? department : null;
+        const cleanImageUrl = imageUrl && imageUrl.trim() !== '' ? imageUrl : null;
+
+        const query = 'UPDATE employees SET name = ?, email = ?, position = ?, department = ?, imageUrl = ? WHERE id = ?';
+        const [results] = await db.query(query, [name, email, cleanPosition, cleanDepartment, cleanImageUrl, id]);
 
         if (results.affectedRows === 0) {
             return res.status(404).json({ error: 'Employee not found' });
         }
-        res.json({ id, name, email, position, department, message: 'Employee updated successfully' });
+        res.json({ 
+            id, 
+            name, 
+            email, 
+            position: cleanPosition, 
+            department: cleanDepartment, 
+            imageUrl: cleanImageUrl, 
+            message: 'Employee updated successfully' 
+        });
     } catch (err) {
         console.error('Error updating employee:', err);
         if (err.code === 'ER_DUP_ENTRY') {
@@ -128,6 +152,31 @@ app.delete('/api/employees/:id', async (req, res) => {
         console.error('Error deleting employee:', err);
         res.status(500).json({ error: 'Failed to delete employee' });
     }
+});
+
+
+app.get('/api/employees/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+    
+    const query = `
+      SELECT * FROM employees 
+      WHERE name LIKE ? OR email LIKE ? OR position LIKE ? OR department LIKE ?
+      ORDER BY created_at DESC
+    `;
+    
+    const searchTerm = `%${q}%`;
+    
+    const [results] = await db.query(query, [searchTerm, searchTerm, searchTerm, searchTerm]);
+    res.json(results);
+  } catch (err) {
+    console.error('Error searching employees:', err);
+    res.status(500).json({ error: 'Failed to search employees' });
+  }
 });
 
 
