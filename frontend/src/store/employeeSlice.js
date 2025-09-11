@@ -128,13 +128,13 @@ const employeeSlice = createSlice({
         const updatedEmployee = action.payload;
 
         
-        const mainIndex = state.employees.findIndex(emp => emp.id === updatedEmployee.id);
+        const mainIndex = state.employees.findIndex(emp => emp.id === Number(updatedEmployee.id));
         if (mainIndex !== -1) {
           state.employees[mainIndex] = updatedEmployee;
         }
 
         
-        const filteredIndex = state.filteredEmployees.findIndex(emp => emp.id === updatedEmployee.id);
+        const filteredIndex = state.filteredEmployees.findIndex(emp => emp.id === Number(updatedEmployee.id));
         if (filteredIndex !== -1) {
           state.filteredEmployees[filteredIndex] = updatedEmployee;
         }
